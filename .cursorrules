@@ -1,0 +1,203 @@
+# MODULAR BANKING DEMO - CURSOR RULES
+# =====================================
+
+## PROJECT OVERVIEW
+This is a modular banking demonstration application showcasing the transition from monolithic to microservices architecture. The application demonstrates business functionality to banking customers while revealing the underlying technical architecture to technical users.
+
+## FOLDER STRUCTURE
+```
+ModularBankingDemo/
+├── .cursorrules                          # This file - project guidelines
+├── modular-banking-frontend/           # React frontend application
+│   ├── public/                         # Static assets
+│   ├── src/                           # Source code
+│   │   ├── __tests__/                 # ALL TEST FILES (Create React App pattern)
+│   │   │   ├── App.test.js           # App component tests
+│   │   │   ├── Dashboard.test.js     # Dashboard component tests
+│   │   │   ├── HeadlessV3.test.js    # HeadlessV3 component tests
+│   │   │   ├── ModularArchitecture.test.js # ModularArchitecture tests
+│   │   │   └── SupportingServices.test.js # SupportingServices tests
+│   │   ├── components/                # Component files
+│   │   │   ├── HeadlessV3.js         # HeadlessV3 component
+│   │   │   └── HeadlessV3.css        # HeadlessV3 styling
+│   │   ├── __mocks__/                # Mock files for testing
+│   │   ├── styles/                   # Global styles (if any)
+│   │   ├── App.js                    # Main App component
+│   │   ├── App.css                   # App styling (Temenos theme)
+│   │   ├── Dashboard.js              # Main dashboard component
+│   │   ├── Dashboard.css             # Dashboard styling (comprehensive)
+│   │   ├── DemoFlow.js               # DemoFlow component
+│   │   ├── DemoFlow.css              # DemoFlow styling
+│   │   ├── ModularArchitecture.js    # ModularArchitecture component
+│   │   ├── ModularArchitecture.css   # ModularArchitecture styling
+│   │   ├── SupportingServices.js     # SupportingServices component
+│   │   ├── SupportingServices.css    # SupportingServices styling
+│   │   ├── index.js                  # React entry point
+│   │   └── setupTests.js             # Jest test configuration
+│   ├── package.json                  # Dependencies and scripts
+│   └── README.md                     # Frontend documentation
+├── demoflow-backend/                  # Node.js/Express backend
+│   ├── src/                          # Backend source code
+│   │   ├── services/                 # Service layer
+│   │   ├── routes/                   # API routes
+│   │   └── server.js                 # Express server entry point
+│   ├── tests/                        # Backend test files
+│   │   ├── eventHubService.test.js   # Event Hub service tests
+│   │   ├── sessionManager.test.js    # Session management tests
+│   │   ├── headlessV3.test.js        # HeadlessV3 API tests
+│   │   └── integration.test.js       # Integration tests
+│   ├── jest.config.js                # Jest configuration
+│   ├── jest.setup.js                 # Jest setup
+│   ├── package.json                  # Backend dependencies
+│   └── .env                          # Environment variables
+└── PUML/                             # PlantUML files (future architecture visualization)
+    └── plantuml-mit-1.2025.1.jar    # PlantUML JAR file
+```
+
+## COMPONENT ARCHITECTURE
+
+### Dashboard Components
+The dashboard features four main banking product modules:
+1. **Deposits R25** (🏦) - Comprehensive deposit management system
+2. **Lending R24** (💰) - Advanced lending platform 
+3. **Pricing** (📊) - Dynamic pricing engine
+4. **Payments** (💳) - Modern payments processing platform
+
+### HeadlessV3 Component
+- **Real-time Event Streaming**: Connects to backend via Server-Sent Events (SSE)
+- **Drag-and-Drop Interface**: Native HTML5 drag-and-drop for component reordering
+- **Responsive Design**: 90% viewport width with 3-column grid layout
+- **Event Visualization**: Color-coded event types with expandable details
+
+### Styling Guidelines
+- **Primary Theme**: Temenos Banking (Blue: #1e3a8a, #3b82f6)
+- **Design System**: Modern, accessible, responsive
+- **Accessibility**: WCAG 2.1 AA compliant
+- **Animation**: Subtle, professional transitions
+
+## DEVELOPMENT RULES
+
+### 1. FOLDER STRUCTURE COMPLIANCE
+- **Frontend Tests**: ALL tests are located in `/src/__tests__/` (Create React App standard)
+- **Backend Tests**: Located in `/tests/` directory
+- **NEVER** mix test files with component files in src/components/
+- **PRESERVE** the current directory structure
+- **Component Files**: Keep components in `/src/components/` when they become reusable
+
+### 2. TESTING STANDARDS
+- **Frontend**: All tests in `/ModularBankingDemo/modular-banking-frontend/src/__tests__/`
+- **Backend**: All tests in `/ModularBankingDemo/demoflow-backend/tests/`
+- Tests import components using relative paths: `../ComponentName` (frontend) or `../src/...` (backend)
+- Maintain comprehensive test coverage
+- Use proper accessibility testing with @testing-library/jest-dom
+
+### 3. COMPONENT DEVELOPMENT
+- **Dashboard rectangles** represent banking products: Deposits R25, Lending R24, Pricing, Payments
+- **Never change** the core banking product names without updating all related tests
+- **HeadlessV3**: Maintain 90% viewport width and 3-column grid layout
+- **Preserve** accessibility features and keyboard navigation
+
+### 4. STYLING CONSISTENCY
+- **Use** the established Temenos color palette
+- **Maintain** the gradient backgrounds and modern UI elements
+- **Preserve** the header styling that matches the dashboard theme
+- **Keep** all animations and transitions subtle and professional
+- **HeadlessV3**: Ensure 90% width container and responsive 3-column grid
+
+### 5. IMPORT PATHS
+- **Frontend Tests**: Import from `../ComponentName` or `../components/ComponentName`
+- **Backend Tests**: Import from `../src/services/ServiceName`
+- Source files use relative imports within their respective directories
+- **Never** break the import structure when refactoring
+
+### 6. NAMING CONVENTIONS
+- Component files: PascalCase (Dashboard.js, App.js, HeadlessV3.js)
+- Test files: ComponentName.test.js or ServiceName.test.js
+- CSS files: match component names (Dashboard.css, App.css, HeadlessV3.css)
+- Test IDs: kebab-case (deposits-r25-pane, dashboard-grid, headless-v3-container)
+
+## BACKEND ARCHITECTURE
+
+### Services
+- **EventHubService**: Manages Kafka/Azure Event Hub connections
+- **SessionManager**: Handles user session lifecycle and cleanup
+- **HeadlessV3 API**: RESTful endpoints for component management and SSE streaming
+
+### API Endpoints
+- `GET /api/headless-v3/components` - Get available components
+- `GET /api/headless-v3/stats` - Get service statistics
+- `GET /api/headless-v3/events/:componentKey` - SSE event streaming
+
+## FUTURE DEVELOPMENT AREAS
+
+### Planned Features (from original spec)
+1. **Mobile App Tab** - Smartphone resolution interface for bank customers
+2. **Branch Application Tab** - Employee interface for bank operations  
+3. **Headless APIs Tab** - REST API testing and event monitoring
+4. **Architecture Tab** - Dynamic PUML visualization of system architecture
+5. **Assistant Tab** - RAG model for architecture documentation
+
+### Technology Integration
+- **Backend**: Node.js/Express with Kafka integration
+- **Architecture Visualization**: PlantUML with dynamic highlighting
+- **Event Streaming**: Apache Kafka / Azure Event Hub integration
+- **API Testing**: REST API console with JSON request/response
+
+## CRITICAL REMINDERS
+
+### DO NOT:
+- Mix test files with component files in src/components/
+- Change the banking product names without comprehensive updates
+- Break the established folder structure
+- Remove accessibility features
+- Modify the Temenos branding theme
+- Create temporary files in the root directory
+- **NEVER CREATE OR USE MOCK DATA FOR KAFKA EVENTS OR API RESPONSES** - All event streaming and API data must be real or from actual backend services
+- Generate fake/mock Kafka events, simulated API responses, or placeholder data for production flows
+- Use hardcoded mock data in EventStream components or backend services
+
+### ALWAYS:
+- Run tests after making changes: `npm test`
+- Maintain the responsive design (90% width for HeadlessV3)
+- Preserve keyboard navigation and drag-and-drop functionality
+- Keep the professional banking appearance
+- Update tests when changing component behavior
+- Respect the established import paths
+- Clean up temporary files after development
+- **USE REAL DATA SOURCES** - Connect to actual Kafka topics, real APIs, and live backend services
+- Remove any existing mock data generators or simulators from production code paths
+
+## TESTING COMMANDS
+
+### Frontend
+```bash
+# Run all frontend tests
+cd modular-banking-frontend && npm test
+
+# Run specific test file
+cd modular-banking-frontend && npm test -- --testNamePattern="HeadlessV3"
+
+# Run tests without watch mode
+cd modular-banking-frontend && npm test -- --watchAll=false
+```
+
+### Backend
+```bash
+# Run all backend tests
+cd demoflow-backend && npm test
+
+# Run specific test categories
+cd demoflow-backend && npm run test:unit
+cd demoflow-backend && npm run test:integration
+cd demoflow-backend && npm run test:eventhub
+```
+
+## CONTACT & CONTEXT
+This project demonstrates modular banking architecture for business and technical stakeholders. The UI must remain professional, accessible, and true to banking industry standards while showcasing the underlying microservices transformation.
+
+## TECHNICAL NOTES
+- **Test Location**: All frontend tests in `src/__tests__/` due to Create React App requirements
+- **Jest Configuration**: Using default Create React App patterns for maximum compatibility
+- **Import Paths**: Simplified to relative imports from test directories
+- **HeadlessV3**: Uses native HTML5 drag-and-drop for React 19 compatibility
+- **Backend**: Express.js with SSE for real-time event streaming 
