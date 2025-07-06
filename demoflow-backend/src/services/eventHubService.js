@@ -53,6 +53,16 @@ class EventHubService {
       CONNECTION_STRING: connectionString ? `SET (length: ${connectionString.length})` : 'NOT SET'
     });
 
+    // Add detailed debug logging
+    console.log('🔍 [EventHubService] Detailed environment debug:', {
+      BOOTSTRAP_SERVERS_type: typeof servers,
+      CONNECTION_STRING_type: typeof connectionString,
+      BOOTSTRAP_SERVERS_null: servers === null,
+      CONNECTION_STRING_null: connectionString === null,
+      BOOTSTRAP_SERVERS_undefined: servers === undefined,
+      CONNECTION_STRING_undefined: connectionString === undefined
+    });
+
     if (!servers || !connectionString) {
       console.warn('⚠️  [EventHubService] Environment variables not yet available. Service will retry initialization when needed.');
       this.isInitialized = false;
@@ -199,6 +209,13 @@ class EventHubService {
       // Create unique consumer group for this session and component
       const groupId = `event-stream-${component}-${sessionId}-${Date.now()}`;
       
+      console.log(`🔧 [EventHubService] Creating consumer with groupId: ${groupId}`);
+      console.log(`🔧 [EventHubService] Kafka client config check:`, {
+        kafkaExists: !!this.kafka,
+        isReady: this.ready,
+        isInitialized: this.isInitialized
+      });
+      
       const consumer = this.kafka.consumer({ 
         groupId,
         sessionTimeout: 30000,
@@ -254,8 +271,24 @@ class EventHubService {
    */
   async _establishConnection(consumer, topic, sessionId, component, eventCallback, groupId) {
     try {
+      console.log(`🔌 [EventHubService] Establishing connection for ${component}...`);
+      
+      // Debug the current environment state at connection time
+      const currentServers = process.env.BOOTSTRAP_SERVERS;
+      const currentConnectionString = process.env.CONNECTION_STRING;
+      
+      console.log('🔍 [EventHubService] Connection-time environment check:', {
+        BOOTSTRAP_SERVERS: currentServers ? `${currentServers.substring(0, 50)}...` : 'NOT SET',
+        CONNECTION_STRING: currentConnectionString ? `SET (length: ${currentConnectionString.length})` : 'NOT SET',
+        kafkaClientExists: !!this.kafka,
+        consumerExists: !!consumer
+      });
+
       await consumer.connect();
+      console.log(`✅ [EventHubService] Consumer connected for ${component}`);
+      
       await consumer.subscribe({ topic, fromBeginning: false });
+      console.log(`✅ [EventHubService] Subscribed to topic ${topic} for ${component}`);
 
       // Store consumer and callback
       if (!this.consumers.has(sessionId)) {
@@ -285,6 +318,12 @@ class EventHubService {
       console.log(`✅ Connected to ${component} (${topic}) for session ${sessionId}`);
     } catch (error) {
       console.error(`❌ Error in _establishConnection for ${component}:`, error);
+      console.error(`❌ Error details:`, {
+        message: error.message,
+        code: error.code,
+        type: error.constructor.name,
+        stack: error.stack
+      });
       throw error;
     }
   }
