@@ -381,6 +381,41 @@ router.post('/session/:id/cleanup', async (req, res) => {
   }
 });
 
+// GET /api/event-stream/debug-env - Debug environment variables
+router.get('/debug-env', (req, res) => {
+  const servers = process.env.BOOTSTRAP_SERVERS;
+  const connectionString = process.env.CONNECTION_STRING;
+  
+  res.json({
+    debug: {
+      BOOTSTRAP_SERVERS: {
+        exists: !!servers,
+        type: typeof servers,
+        isNull: servers === null,
+        isUndefined: servers === undefined,
+        length: servers ? servers.length : 0,
+        preview: servers ? `${servers.substring(0, 50)}...` : 'NOT SET'
+      },
+      CONNECTION_STRING: {
+        exists: !!connectionString,
+        type: typeof connectionString,
+        isNull: connectionString === null,
+        isUndefined: connectionString === undefined,
+        length: connectionString ? connectionString.length : 0,
+        preview: connectionString ? 'SET (hidden for security)' : 'NOT SET'
+      },
+      eventHubService: {
+        ready: eventHubService.isReady(),
+        initialized: eventHubService.isInitialized
+      },
+      processEnv: {
+        NODE_ENV: process.env.NODE_ENV,
+        envKeysCount: Object.keys(process.env).length
+      }
+    }
+  });
+});
+
 // Error handling middleware specific to event stream routes
 router.use((error, req, res, next) => {
   console.error('[EventStreamRoutes] Error:', error);

@@ -10,8 +10,21 @@ const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables from the main .env file
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+// --- Robust Environment Variable Loading ---
+// Determine the project root directory. Use the PROJECT_ROOT env var if it's set by a startup script,
+// otherwise, fall back to a relative path from the current file. This ensures reliability
+// whether the app is started via a script from the root or manually from its own directory.
+const projectRoot = process.env.PROJECT_ROOT || path.resolve(__dirname, '..', '..');
+const envPath = path.resolve(projectRoot, '.env');
+
+if (fs.existsSync(envPath)) {
+  console.log(`✅ Loading environment variables from: ${envPath}`);
+  require('dotenv').config({ path: envPath });
+} else {
+  console.error(`❌ FATAL: .env file not found at expected path: ${envPath}`);
+  console.error('   Please ensure a .env file exists at the project root.');
+  process.exit(1); // Exit if the configuration is missing.
+}
 
 // Import routes and services
 const eventStreamRoutes = require('./routes/eventStreamRoutes');
@@ -61,6 +74,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging middleware
 app.use(morgan('combined'));
+
+// --- Serve Frontend Static Files ---
+// This serves the built React application from the 'build' directory.
+const frontendBuildPath = path.resolve(projectRoot, 'frontend-build');
+app.use(express.static(frontendBuildPath));
+console.log(`✅ Serving static files from: ${frontendBuildPath}`);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -132,10 +151,17 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler
+// --- Catch-all for Frontend Routing ---
+// This ensures that any request that doesn't match an API endpoint
+// is handed over to the React app for client-side routing.
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(frontendBuildPath, 'index.html'));
+});
+
+// 404 handler - This will now only be hit if the file doesn't exist in the React build.
 app.use('*', (req, res) => {
   res.status(404).json({
-    error: 'Endpoint not found',
+    error: 'Endpoint or file not found',
     path: req.originalUrl,
     method: req.method,
     availableEndpoints: [

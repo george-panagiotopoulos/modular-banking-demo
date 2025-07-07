@@ -4,11 +4,6 @@
  */
 
 const { Kafka, logLevel } = require('kafkajs');
-const { EventHubProducerClient } = require('@azure/event-hubs');
-const { EventHubConsumerClient } = require('@azure/event-hubs');
-const { ContainerClient } = require('@azure/storage-blob');
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 // Topic mapping
 const KAFKA_TOPICS = {
@@ -53,18 +48,15 @@ class EventHubService {
       CONNECTION_STRING: connectionString ? `SET (length: ${connectionString.length})` : 'NOT SET'
     });
 
-    // Add detailed debug logging
-    console.log('🔍 [EventHubService] Detailed environment debug:', {
-      BOOTSTRAP_SERVERS_type: typeof servers,
-      CONNECTION_STRING_type: typeof connectionString,
-      BOOTSTRAP_SERVERS_null: servers === null,
-      CONNECTION_STRING_null: connectionString === null,
-      BOOTSTRAP_SERVERS_undefined: servers === undefined,
-      CONNECTION_STRING_undefined: connectionString === undefined
-    });
-
-    if (!servers || !connectionString) {
-      console.warn('⚠️  [EventHubService] Environment variables not yet available. Service will retry initialization when needed.');
+    // Simplified validation - just check basic existence
+    if (!servers || !connectionString || 
+        typeof servers !== 'string' || typeof connectionString !== 'string' ||
+        servers.trim().length === 0 || connectionString.trim().length === 0) {
+      
+      console.warn('⚠️  [EventHubService] Environment variables not properly loaded. Service will retry initialization when needed.');
+      console.warn('    - BOOTSTRAP_SERVERS valid:', !!servers && typeof servers === 'string' && servers.trim().length > 0);
+      console.warn('    - CONNECTION_STRING valid:', !!connectionString && typeof connectionString === 'string' && connectionString.trim().length > 0);
+      
       this.isInitialized = false;
       this.ready = false;
       return;
@@ -157,18 +149,25 @@ class EventHubService {
    * Connect to a component's event stream (queued version)
    */
   async connectToComponent(sessionId, component, eventCallback) {
-    // Retry initialization if not yet initialized
-    if (!this.isInitialized) {
-      console.log('🔄 [EventHubService] Service not initialized, retrying initialization...');
+    // Ensure service is properly initialized
+    if (!this.isReady() || !this.isInitialized) {
+      console.log('🔄 [EventHubService] Service not ready, attempting re-initialization...');
       this.initialize();
       
-      if (!this.isInitialized) {
-        throw new Error('EventHub service initialization failed - check environment variables');
+      // Give it a moment to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!this.isReady() || !this.isInitialized) {
+        throw new Error('EventHub service initialization failed - check environment variables and network connectivity');
       }
     }
 
-    if (!this.ready) {
-      throw new Error('EventHub service not ready');
+    // Always ensure we have environment variables
+    const servers = process.env.BOOTSTRAP_SERVERS;
+    const connectionString = process.env.CONNECTION_STRING;
+    
+    if (!servers || !connectionString) {
+      throw new Error('EventHub service initialization failed - check environment variables');
     }
 
     const topic = KAFKA_TOPICS[component];
@@ -199,91 +198,32 @@ class EventHubService {
     // Clean up existing connection if any
     await this.disconnectFromComponent(sessionId, component);
 
-    // Add connection timeout
-    const connectionTimeout = 45000; // 45 seconds timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`Connection timeout for ${component} after ${connectionTimeout}ms`)), connectionTimeout);
-    });
-
     try {
-      // Create unique consumer group for this session and component
+      // Ensure the shared Kafka client from the constructor is initialized and ready.
+      if (!this.kafka || !this.isReady()) {
+        console.error('❌ [EventHubService] Main Kafka client is not ready. Cannot create consumer.');
+        // Attempt a single re-initialization.
+        this.initialize();
+        if (!this.kafka || !this.isReady()) {
+          throw new Error('EventHub service could not be initialized. Check server logs.');
+        }
+        console.log('✅ [EventHubService] Re-initialization was successful.');
+      }
+
+      // Create a unique consumer group for this session and component.
       const groupId = `event-stream-${component}-${sessionId}-${Date.now()}`;
       
-      console.log(`🔧 [EventHubService] Creating consumer with groupId: ${groupId}`);
-      console.log(`🔧 [EventHubService] Kafka client config check:`, {
-        kafkaExists: !!this.kafka,
-        isReady: this.ready,
-        isInitialized: this.isInitialized
-      });
+      console.log(`🔧 [EventHubService] Creating consumer for groupId: ${groupId} using the shared Kafka client.`);
       
+      // Create the consumer from the single, shared this.kafka instance.
       const consumer = this.kafka.consumer({ 
         groupId,
         sessionTimeout: 30000,
         heartbeatInterval: 10000,
       });
 
-      console.log(`Attempting to connect to ${component} (${topic}) for session ${sessionId}...`);
+      console.log(`Attempting to connect consumer to ${component} (${topic}) for session ${sessionId}...`);
       
-      // Race between connection and timeout
-      await Promise.race([
-        this._establishConnection(consumer, topic, sessionId, component, eventCallback, groupId),
-        timeoutPromise
-      ]);
-
-      return { success: true, topic, groupId };
-
-    } catch (error) {
-      console.error(`❌ Failed to connect to ${component}:`, error.message);
-      
-      // Enhanced error logging for corporate network issues
-      if (error.message && error.message.includes('ECONNRESET')) {
-        console.error('Network connection reset detected. This may be due to:');
-        console.error('1. Corporate firewall/proxy blocking the connection');
-        console.error('2. SSL certificate issues with corporate proxy');
-        console.error('3. Network timeout or connectivity issues');
-        console.error('Try setting SSL_REJECT_UNAUTHORIZED=false in environment variables');
-      }
-      
-      if (error.message && error.message.includes('ENOTFOUND')) {
-        console.error('DNS resolution failed. Check network connectivity and DNS settings.');
-      }
-
-      if (error.message && error.message.includes('Connection timeout') || error.message.includes('ETIMEDOUT')) {
-        console.error('Connection timeout detected. This may be due to:');
-        console.error('1. Corporate firewall blocking port 9093');
-        console.error('2. Network proxy not configured for Kafka protocol');
-        console.error('3. Azure Event Hub endpoint not accessible from corporate network');
-        console.error('4. Network bandwidth or latency issues');
-        console.error('');
-        console.error('Troubleshooting steps:');
-        console.error('1. Check if port 9093 is open in corporate firewall');
-        console.error('2. Configure corporate proxy for Kafka connections');
-        console.error('3. Try connecting from outside corporate network');
-        console.error('4. Contact network administrator for Azure Event Hub access');
-      }
-      
-      throw error;
-    }
-  }
-
-  /**
-   * Establish the actual connection
-   */
-  async _establishConnection(consumer, topic, sessionId, component, eventCallback, groupId) {
-    try {
-      console.log(`🔌 [EventHubService] Establishing connection for ${component}...`);
-      
-      // Debug the current environment state at connection time
-      const currentServers = process.env.BOOTSTRAP_SERVERS;
-      const currentConnectionString = process.env.CONNECTION_STRING;
-      
-      console.log('🔍 [EventHubService] Connection-time environment check:', {
-        BOOTSTRAP_SERVERS: currentServers ? `${currentServers.substring(0, 50)}...` : 'NOT SET',
-        CONNECTION_STRING: currentConnectionString ? `SET (length: ${currentConnectionString.length})` : 'NOT SET',
-        kafkaClientExists: !!this.kafka,
-        consumerExists: !!consumer
-      });
-
       await consumer.connect();
       console.log(`✅ [EventHubService] Consumer connected for ${component}`);
       
@@ -316,13 +256,14 @@ class EventHubService {
       });
 
       console.log(`✅ Connected to ${component} (${topic}) for session ${sessionId}`);
+      return { success: true, topic, groupId };
+
     } catch (error) {
-      console.error(`❌ Error in _establishConnection for ${component}:`, error);
+      console.error(`❌ Failed to connect to ${component}:`, error.message);
       console.error(`❌ Error details:`, {
         message: error.message,
         code: error.code,
-        type: error.constructor.name,
-        stack: error.stack
+        type: error.constructor.name
       });
       throw error;
     }

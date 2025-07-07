@@ -1,14 +1,12 @@
 #!/bin/bash
 
-# Source .env for configuration
-set -a
-[ -f .env ] && . .env
-set +a
-
 # Set project root
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
+export PROJECT_ROOT
 
 # Configuration
+# Variables are now loaded by the Node.js app directly, so we only define defaults here
+# if they are needed by the script itself.
 FRONTEND_PORT=${FRONTEND_PORT:-3011}
 BACKEND_PORT=${BACKEND_PORT:-5011}
 JOLT_PORT=${JOLT_PORT:-8081}
