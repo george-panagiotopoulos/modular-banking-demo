@@ -1,0 +1,76 @@
+MODULAR BANKING DEMO - ARCHITECTURE DOCUMENTATION
+==================================================
+
+A. FRONTEND COMPONENTS
+======================
+
+App.js
+Main React application component that handles routing and navigation between different sections of the modular banking demo. Provides header with back navigation and renders the main dashboard or specific feature pages based on URL routes.
+
+Dashboard.js
+Primary landing page component displaying four main banking product modules (Deposits R25, Lending R24, Pricing, Payments) as interactive rectangles. Features circular panes for architecture information and supporting services with comprehensive banking product descriptions.
+
+EventStream.js
+Real-time event streaming component that connects to backend via Server-Sent Events (SSE). Displays live Kafka events from banking modules with color-coded event types, expandable details, and drag-and-drop interface for component reordering in a responsive 3-column grid layout.
+
+APIViewer.js
+Comprehensive REST API testing interface for banking services. Provides dropdown selection of services (Party, Deposits, Lending, Holdings), endpoint configuration, request/response visualization, and real-time API testing with JSON payload editing and response formatting capabilities.
+
+ModularArchitecture.js
+Detailed architecture visualization component showcasing the transition from monolithic to microservices banking systems. Displays service dependencies, event flows, and technical architecture with interactive elements and comprehensive documentation of modular banking principles.
+
+SupportingServices.js
+Component displaying essential business and technical services that enable the modular banking platform. Shows cross-cutting concerns like Event Store, Party management, Holdings, Product Catalogue, Sub-Ledger, and Limits services with detailed capabilities and integration points.
+
+DemoFlow.js
+Interactive demonstration flow component that guides users through banking scenarios and workflows. Provides step-by-step guidance for testing banking operations and understanding the modular architecture in action with real-time feedback and progress tracking.
+
+B. BACKEND COMPONENTS
+=====================
+
+server.js
+Express.js server entry point that configures middleware, routes, and serves the React frontend. Handles CORS, security headers, static file serving, and provides health check endpoints. Manages graceful shutdown and error handling for the entire backend application.
+
+eventHubService.js
+Core service managing real Azure Event Hub connections using Kafka protocol. Handles component-specific topic subscriptions, event streaming, session management, and provides real-time event data to frontend components with connection pooling and error recovery mechanisms.
+
+sessionManager.js
+Session lifecycle management service that tracks user sessions, manages EventHub connections, and provides cleanup functionality. Handles session creation, status tracking, and resource cleanup to prevent memory leaks and maintain system performance across multiple user sessions.
+
+temenosApiService.js
+Integration service for Temenos banking APIs providing standardized access to core banking functions. Handles authentication, request formatting, response processing, and error handling for external banking system integration with retry logic and circuit breaker patterns.
+
+loansService.js
+Lending module service that manages loan origination, servicing, and lifecycle operations. Provides APIs for creating mortgage and consumer loans, retrieving loan status, payment schedules, and customer loan arrangements with comprehensive business logic validation.
+
+partiesService.js
+Customer and counterparty management service handling party creation, updates, and queries. Manages customer profiles, contact information, relationships, and provides search capabilities by various criteria including ID, name, phone, and email with data validation.
+
+accountsService.js
+Account management service for deposit and current account operations. Handles account creation, balance queries, transaction processing, and account lifecycle management with support for multiple account types and currency handling.
+
+joltGeneratorService.js
+Data transformation service using JOLT specification for JSON-to-JSON mapping. Provides dynamic data transformation capabilities for API responses, enabling flexible data formatting and integration between different banking system components and external interfaces.
+
+C. DOCUMENTATION AND TOOLS
+==========================
+
+Documentation Directory
+Comprehensive documentation collection including deployment guides, integration instructions, frontend/backend feature documentation, and tools/technologies overview. Provides detailed technical specifications, API documentation, and operational procedures for the modular banking platform.
+
+Tools Directory
+Development and operational tools including JOLT service utilities, Maven build tools, and logging infrastructure. Contains service-specific tools for data transformation, build automation, and system monitoring to support development and deployment workflows.
+
+Environment Configuration (.env)
+Centralized configuration file containing all environment variables, API endpoints, credentials, and service connection strings. Manages Azure Event Hub connections, Temenos API credentials, and application-specific settings for secure and configurable deployment.
+
+Docker Configuration
+Containerization setup with Dockerfile and docker-compose.yml for consistent deployment across environments. Provides isolated runtime environment, dependency management, and simplified deployment process for both development and production scenarios.
+
+Start/Stop Scripts
+Automated application lifecycle management scripts (start-app.sh, stop-app.sh) that handle service startup, dependency checks, environment validation, and graceful shutdown procedures. Ensures proper initialization order and resource cleanup during application lifecycle.
+
+OVERALL APPLICATION DESCRIPTION
+==============================
+
+The Modular Banking Demo is a comprehensive showcase application demonstrating the transition from monolithic to microservices banking architecture. It provides an interactive interface for banking operations while revealing underlying technical services, real-time event streaming, and API integrations. The application serves both business stakeholders seeking to understand banking capabilities and technical teams evaluating architectural patterns, featuring four core banking modules (Deposits, Lending, Pricing, Payments) supported by essential business and technical services. The system integrates with real Azure Event Hub for live event streaming, Temenos banking APIs for core functionality, and provides comprehensive API testing and architecture visualization tools. 

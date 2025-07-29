@@ -166,8 +166,11 @@ app.use('*', (req, res) => {
     method: req.method,
     availableEndpoints: [
       'GET /health',
+      'GET /api/banking/parties/search',
+      'GET /api/banking/parties/:partyId',
       'GET /api/banking/parties/:partyId/accounts',
       'GET /api/banking/parties/:partyId/loans',
+      'GET /api/banking/parties/:partyId/summary',
       'GET /api/event-stream/components',
       'GET /api/event-stream/stats',
       'POST /api/event-stream/connect/:component',

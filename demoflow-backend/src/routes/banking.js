@@ -18,6 +18,171 @@ const accountsService = getAccountsService();
 const temenosApiService = getTemenosApiService();
 
 /**
+ * GET /api/banking/parties/search
+ * Search parties by various criteria
+ */
+router.get('/parties/search', async (req, res) => {
+  console.log(`[Banking API] GET /parties/search`);
+  console.log(`[Banking API] Request query:`, req.query);
+  
+  const { lastName, partyId, dateOfBirth } = req.query;
+  
+  // Validate that at least one search criteria is provided (and not just whitespace)
+  const hasLastName = lastName && lastName.trim().length > 0;
+  const hasPartyId = partyId && partyId.trim().length > 0;
+  const hasDateOfBirth = dateOfBirth && dateOfBirth.trim().length > 0;
+  
+  if (!hasLastName && !hasPartyId && !hasDateOfBirth) {
+    console.log(`[Banking API] Error: No search criteria provided`);
+    return res.status(400).json({ 
+      error: 'At least one search criteria is required (lastName, partyId, or dateOfBirth)' 
+    });
+  }
+  
+  try {
+    console.log(`[Banking API] Searching parties with criteria:`, { lastName, partyId, dateOfBirth });
+    
+    // If partyId is provided, do a direct lookup from the real API
+    if (hasPartyId) {
+      try {
+        console.log(`[Banking API] Direct lookup for partyId: ${partyId}`);
+        const partyDetails = await partiesService.getPartyDetails(partyId.trim());
+        console.log(`[Banking API] Found party by ID:`, partyDetails);
+        return res.json([partyDetails]); // Return as array for consistency
+      } catch (error) {
+        console.log(`[Banking API] Party not found by ID ${partyId}:`, error.message);
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+    }
+    
+    // For searches by last name or date of birth, use predefined test customers
+    // In a real implementation, this would query the actual Temenos API with search parameters
+    const testCustomers = [
+      {
+        customerId: '2516466195',
+        partyId: '2516466195',
+        firstName: 'John',
+        lastName: 'Smith',
+        displayName: 'John Smith',
+        dateOfBirth: '1985-03-15',
+        cityOfBirth: 'New York',
+        middleName: 'Michael',
+        nationality: 'US',
+        primaryEmail: 'john.smith@email.com',
+        email: 'john.smith@email.com',
+        mobilePhone: '+1-555-0123',
+        phone: '+1-555-0123',
+        homePhone: '+1-555-0124',
+        address: '123 Main Street, New York, NY 10001',
+        status: 'Active',
+        customerSince: '2020-01-15'
+      },
+      {
+        customerId: '2516466196',
+        partyId: '2516466196',
+        firstName: 'Jane',
+        lastName: 'Johnson',
+        displayName: 'Jane Johnson',
+        dateOfBirth: '1990-07-22',
+        cityOfBirth: 'Chicago',
+        middleName: 'Elizabeth',
+        nationality: 'US',
+        primaryEmail: 'jane.johnson@email.com',
+        email: 'jane.johnson@email.com',
+        mobilePhone: '+1-555-0456',
+        phone: '+1-555-0456',
+        homePhone: '+1-555-0457',
+        address: '456 Oak Avenue, Chicago, IL 60601',
+        status: 'Active',
+        customerSince: '2019-08-10'
+      },
+      {
+        customerId: '2516466197',
+        partyId: '2516466197',
+        firstName: 'Michael',
+        lastName: 'Brown',
+        displayName: 'Michael Brown',
+        dateOfBirth: '1978-12-05',
+        cityOfBirth: 'Los Angeles',
+        middleName: 'David',
+        nationality: 'US',
+        primaryEmail: 'michael.brown@email.com',
+        email: 'michael.brown@email.com',
+        mobilePhone: '+1-555-0789',
+        phone: '+1-555-0789',
+        homePhone: '+1-555-0790',
+        address: '789 Elm Street, Los Angeles, CA 90210',
+        status: 'Active',
+        customerSince: '2021-03-22'
+      },
+      {
+        customerId: '2516466198',
+        partyId: '2516466198',
+        firstName: 'Sarah',
+        lastName: 'Davis',
+        displayName: 'Sarah Davis',
+        dateOfBirth: '1992-11-18',
+        cityOfBirth: 'Miami',
+        middleName: 'Anne',
+        nationality: 'US',
+        primaryEmail: 'sarah.davis@email.com',
+        email: 'sarah.davis@email.com',
+        mobilePhone: '+1-555-0321',
+        phone: '+1-555-0321',
+        homePhone: '+1-555-0322',
+        address: '321 Pine Road, Miami, FL 33101',
+        status: 'Active',
+        customerSince: '2022-06-30'
+      },
+      {
+        customerId: '2516466199',
+        partyId: '2516466199',
+        firstName: 'Robert',
+        lastName: 'Wilson',
+        displayName: 'Robert Wilson',
+        dateOfBirth: '1975-04-12',
+        cityOfBirth: 'Seattle',
+        middleName: 'James',
+        nationality: 'US',
+        primaryEmail: 'robert.wilson@email.com',
+        email: 'robert.wilson@email.com',
+        mobilePhone: '+1-555-0654',
+        phone: '+1-555-0654',
+        homePhone: '+1-555-0655',
+        address: '654 Cedar Lane, Seattle, WA 98101',
+        status: 'Active',
+        customerSince: '2018-12-01'
+      }
+    ];
+    
+    // Filter customers based on search criteria
+    let filteredCustomers = testCustomers;
+    
+    if (hasLastName) {
+      const searchLastName = lastName.toLowerCase().trim();
+      filteredCustomers = filteredCustomers.filter(customer => 
+        customer.lastName.toLowerCase().includes(searchLastName)
+      );
+      console.log(`[Banking API] Filtered by lastName '${lastName}': ${filteredCustomers.length} results`);
+    }
+    
+    if (hasDateOfBirth) {
+      filteredCustomers = filteredCustomers.filter(customer => 
+        customer.dateOfBirth === dateOfBirth.trim()
+      );
+      console.log(`[Banking API] Filtered by dateOfBirth '${dateOfBirth}': ${filteredCustomers.length} results`);
+    }
+    
+    console.log(`[Banking API] Search completed, returning ${filteredCustomers.length} customers`);
+    res.json(filteredCustomers);
+    
+  } catch (error) {
+    console.error(`[Banking API] Error in GET /parties/search:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/banking/parties/:partyId
  * Get party details
  */

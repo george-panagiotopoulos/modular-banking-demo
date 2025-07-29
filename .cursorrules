@@ -50,6 +50,12 @@ ModularBankingDemo/
 │   ├── jest.setup.js                 # Jest setup
 │   ├── package.json                  # Backend dependencies
 │   └── .env                          # Environment variables
+├── infrastructure/                    # Infrastructure and deployment tools
+│   ├── azure-resource-visualizer.py  # Main Azure resource visualization script
+│   ├── azure-visualization-runner.py # Simplified runner with config support
+│   ├── azure-visualization-config.json # Azure credentials and visualization config
+│   ├── requirements.txt              # Python dependencies for Azure tools
+│   └── README-azure-visualization.md # Azure visualization documentation
 └── PUML/                             # PlantUML files (future architecture visualization)
     └── plantuml-mit-1.2025.1.jar    # PlantUML JAR file
 ```
@@ -142,6 +148,7 @@ The dashboard features four main banking product modules:
 - **Architecture Visualization**: PlantUML with dynamic highlighting
 - **Event Streaming**: Apache Kafka / Azure Event Hub integration
 - **API Testing**: REST API console with JSON request/response
+- **Infrastructure Tools**: Azure Resource Visualizer for deployment monitoring
 
 ## CRITICAL REMINDERS
 
@@ -155,6 +162,7 @@ The dashboard features four main banking product modules:
 - **NEVER CREATE OR USE MOCK DATA FOR KAFKA EVENTS OR API RESPONSES** - All event streaming and API data must be real or from actual backend services
 - Generate fake/mock Kafka events, simulated API responses, or placeholder data for production flows
 - Use hardcoded mock data in EventStream components or backend services
+- Store Azure credentials in version control - use environment variables or secure configuration
 
 ### ALWAYS:
 - Run tests after making changes: `npm test`
@@ -166,6 +174,8 @@ The dashboard features four main banking product modules:
 - Clean up temporary files after development
 - **USE REAL DATA SOURCES** - Connect to actual Kafka topics, real APIs, and live backend services
 - Remove any existing mock data generators or simulators from production code paths
+- Keep infrastructure tools in the `/infrastructure` directory
+- Use secure credential management for Azure resources
 
 ## TESTING COMMANDS
 
@@ -192,6 +202,18 @@ cd demoflow-backend && npm run test:integration
 cd demoflow-backend && npm run test:eventhub
 ```
 
+### Infrastructure Tools
+```bash
+# Install Azure visualization dependencies
+cd infrastructure && pip install -r requirements.txt
+
+# Run Azure resource visualization
+cd infrastructure && python azure-visualization-runner.py
+
+# Generate specific output formats
+cd infrastructure && python azure-resource-visualizer.py --formats plantuml mermaid
+```
+
 ## CONTACT & CONTEXT
 This project demonstrates modular banking architecture for business and technical stakeholders. The UI must remain professional, accessible, and true to banking industry standards while showcasing the underlying microservices transformation.
 
@@ -200,4 +222,5 @@ This project demonstrates modular banking architecture for business and technica
 - **Jest Configuration**: Using default Create React App patterns for maximum compatibility
 - **Import Paths**: Simplified to relative imports from test directories
 - **HeadlessV3**: Uses native HTML5 drag-and-drop for React 19 compatibility
-- **Backend**: Express.js with SSE for real-time event streaming 
+- **Backend**: Express.js with SSE for real-time event streaming
+- **Infrastructure**: Azure Resource Visualizer for deployment monitoring and architecture documentation 

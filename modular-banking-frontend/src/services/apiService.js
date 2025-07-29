@@ -357,6 +357,97 @@ export const validateTransferAmount = (amount) => {
   return { isValid: true, message: '' };
 };
 
+/**
+ * Search for customers using various criteria
+ * @param {Object} searchCriteria - Search parameters
+ * @param {string} searchCriteria.lastName - Customer's last name
+ * @param {string} searchCriteria.partyId - Customer's party ID
+ * @param {string} searchCriteria.dateOfBirth - Customer's date of birth (YYYY-MM-DD)
+ * @returns {Promise<Array>} - Array of customer objects
+ */
+export const searchCustomers = async (searchCriteria) => {
+  console.log(`[Frontend API] searchCustomers called with criteria:`, searchCriteria);
+  
+  try {
+    let url;
+    const timestamp = `?_=${Date.now()}`;
+    
+    // Determine which search endpoint to use based on provided criteria
+    if (searchCriteria.partyId) {
+      // Direct party lookup by ID
+      url = `${BACKEND_BASE_URL}/api/banking/parties/${searchCriteria.partyId}${timestamp}`;
+      console.log(`[Frontend API] Searching by partyId: ${url}`);
+      
+      const response = await fetch(url);
+      console.log(`[Frontend API] searchCustomers response status: ${response.status}`);
+      
+      if (response.status === 404) {
+        // No customer found
+        return [];
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const customerData = await response.json();
+      console.log(`[Frontend API] searchCustomers response data:`, customerData);
+      
+      // Return as array to match expected format
+      return [customerData];
+      
+    } else {
+      // Use backend search endpoint for other criteria
+      let searchUrl = `${BACKEND_BASE_URL}/api/banking/parties/search`;
+      const searchParams = new URLSearchParams();
+      
+      if (searchCriteria.lastName) {
+        searchParams.append('lastName', searchCriteria.lastName);
+      }
+      
+      if (searchCriteria.dateOfBirth) {
+        searchParams.append('dateOfBirth', searchCriteria.dateOfBirth);
+      }
+      
+      // Add timestamp for cache busting
+      searchParams.append('_', Date.now().toString());
+      
+      url = `${searchUrl}?${searchParams.toString()}`;
+      console.log(`[Frontend API] Searching with criteria: ${url}`);
+      
+      const response = await fetch(url);
+      console.log(`[Frontend API] searchCustomers response status: ${response.status}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No customers found
+          return [];
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(`[Frontend API] searchCustomers response data:`, data);
+      
+      // Handle different response formats
+      if (data.success && Array.isArray(data.data)) {
+        return data.data;
+      } else if (Array.isArray(data)) {
+        return data;
+      } else if (data.success && data.data) {
+        // Single result
+        return [data.data];
+      } else {
+        return [];
+      }
+    }
+    
+  } catch (error) {
+    console.error(`[Frontend API] searchCustomers error:`, error);
+    throw new Error(`Customer search failed: ${error.message}`);
+  }
+};
+
 // Default export object with all functions
 const apiService = {
   fetchAccounts,
@@ -366,6 +457,7 @@ const apiService = {
   fetchLoanDetails,
   fetchLoanSchedule,
   submitTransfer,
+  searchCustomers,
   checkApiHealth,
   formatCurrency,
   formatDate,
