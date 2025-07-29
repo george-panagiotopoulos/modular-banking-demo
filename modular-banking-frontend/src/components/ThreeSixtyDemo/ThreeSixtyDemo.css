@@ -314,3 +314,15 @@
   color: var(--temenos-navy);
   font-weight: 600;
 } 
+
+.refresh-indicator {
+  color: var(--temenos-teal);
+  animation: pulse 1.5s infinite;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+} 

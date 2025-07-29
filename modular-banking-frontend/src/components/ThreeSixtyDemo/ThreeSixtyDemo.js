@@ -47,9 +47,10 @@ const FullEventStream = () => {
 
 const ThreeSixtyDemo = () => {
   const [loading, setLoading] = useState(true);
-  const [apiCallTimestamp, setApiCallTimestamp] = useState(null);
   const [syncedPartyId, setSyncedPartyId] = useState('2517636814'); // Default party ID
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const mobileAppRef = useRef(null);
+  const refreshTimerRef = useRef(null);
 
   // Simulate a loading state for a smoother experience
   useEffect(() => {
@@ -60,42 +61,82 @@ const ThreeSixtyDemo = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Cleanup function for timers
+  useEffect(() => {
+    return () => {
+      // Clear any pending timers when component unmounts
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
+
   // Handle API calls from the Deposits API Viewer
   const handleApiCall = (apiCallData) => {
     console.log('API call in ThreeSixtyDemo:', apiCallData);
-    console.log('API call partyId:', apiCallData.partyId);
     
-    // Update timestamp to trigger effects
-    setApiCallTimestamp(Date.now());
+    // Prevent multiple API calls from causing rapid refreshes
+    if (isRefreshing) {
+      console.log('Already refreshing, ignoring new API call');
+      return;
+    }
     
-    // If the API call has partyId, use it to refresh MobileApp
-    if (apiCallData.partyId) {
-      console.log(`API call includes partyId: ${apiCallData.partyId}`);
-      
-      // Store the new partyId in state
-      setSyncedPartyId(apiCallData.partyId);
-      
-      // If the API call is related to accounts or transactions, refresh the mobile app
-      if (mobileAppRef.current) {
-        console.log('Refreshing Mobile App data with new partyId...');
+    setIsRefreshing(true);
+    
+    try {
+      // If the API call has partyId, use it to refresh MobileApp
+      if (apiCallData.partyId) {
+        console.log(`API call includes partyId: ${apiCallData.partyId}`);
         
-        // Set the partyId and refresh
-        if (mobileAppRef.current.setPartyId) {
-          mobileAppRef.current.setPartyId(apiCallData.partyId);
+        // Store the new partyId in state
+        setSyncedPartyId(apiCallData.partyId);
+        
+        // If the API call is related to accounts or transactions, refresh the mobile app
+        if (mobileAppRef.current) {
+          console.log('Refreshing Mobile App data with new partyId...');
+          
+          // Set the partyId and refresh
+          try {
+            if (mobileAppRef.current.setPartyId) {
+              mobileAppRef.current.setPartyId(apiCallData.partyId);
+            }
+            
+            if (mobileAppRef.current.loadInitialData) {
+              // Use a ref for the timer to enable cleanup
+              refreshTimerRef.current = setTimeout(() => {
+                try {
+                  mobileAppRef.current.loadInitialData();
+                } catch (err) {
+                  console.error('Error refreshing Mobile App:', err);
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }, 300); // Longer delay for stability
+            } else {
+              setIsRefreshing(false);
+            }
+          } catch (err) {
+            console.error('Error in Mobile App refresh:', err);
+            setIsRefreshing(false);
+          }
+        } else {
+          setIsRefreshing(false);
         }
-        
-        if (mobileAppRef.current.loadInitialData) {
-          setTimeout(() => {
+      } else {
+        // If no partyId in API call, just refresh with current partyId
+        console.log('No partyId in API call, refreshing with current ID');
+        if (mobileAppRef.current && mobileAppRef.current.loadInitialData) {
+          try {
             mobileAppRef.current.loadInitialData();
-          }, 100); // Short delay to ensure partyId is set
+          } catch (err) {
+            console.error('Error refreshing Mobile App:', err);
+          }
         }
+        setIsRefreshing(false);
       }
-    } else {
-      // If no partyId in API call, just refresh with current partyId
-      console.log('No partyId in API call, refreshing with current ID');
-      if (mobileAppRef.current && mobileAppRef.current.loadInitialData) {
-        mobileAppRef.current.loadInitialData();
-      }
+    } catch (err) {
+      console.error('Error handling API call:', err);
+      setIsRefreshing(false);
     }
   };
 
@@ -123,6 +164,7 @@ const ThreeSixtyDemo = () => {
         </p>
         <div className="party-id-display">
           Current Party ID: <strong>{syncedPartyId}</strong>
+          {isRefreshing && <span className="refresh-indicator"> (refreshing...)</span>}
         </div>
       </div>
 
@@ -139,7 +181,6 @@ const ThreeSixtyDemo = () => {
               <div className="mobile-app-scroll-container">
                 <MobileApp 
                   ref={mobileAppRef} 
-                  key={`mobile-app-${apiCallTimestamp}-${syncedPartyId}`} 
                   initialPartyId={syncedPartyId}
                 />
               </div>

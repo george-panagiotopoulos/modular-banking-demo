@@ -542,6 +542,12 @@ const APIViewer = ({ initialService, onApiCall }) => {
 
   // Execute API call with real backend integration
   const executeApiCall = useCallback(async () => {
+    // Prevent multiple concurrent API calls
+    if (loading) {
+      console.log('API call already in progress, ignoring new request');
+      return;
+    }
+    
     setError(null);
     setSuccess(null);
     
@@ -578,66 +584,103 @@ const APIViewer = ({ initialService, onApiCall }) => {
     setResponseStatus('loading');
     
     try {
+      // Create a safe version of the API call notification data
+      const safeApiCallData = {
+        success: false,
+        service: selectedService,
+        endpoint: selectedEndpoint,
+        method: httpMethod,
+        partyId: partyId
+      };
+      
       // Real API call using the backend tracking endpoint
       const apiCallPayload = {
         uri: uri,
         method: httpMethod,
-        payload: (httpMethod === 'POST' || httpMethod === 'PUT') && payload.trim() ? JSON.parse(payload) : null,
-        domain: selectedService,
-        endpoint: selectedEndpoint
+        payload: null
       };
       
-      // Call the backend tracking endpoint which handles real API calls
-      const response = await fetch(`${apiConfig.backend}/api/headless/track`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Solution': selectedService,
-          'X-Client-Type': 'api-viewer',
-          'X-Endpoint': selectedEndpoint
-        },
-        body: JSON.stringify(apiCallPayload)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Safely parse JSON payload
+      try {
+        if ((httpMethod === 'POST' || httpMethod === 'PUT') && payload.trim()) {
+          apiCallPayload.payload = JSON.parse(payload);
+        }
+      } catch (parseError) {
+        console.error('Error parsing payload JSON:', parseError);
+        setError('Invalid JSON in payload. Please check your JSON format.');
+        setLoading(false);
+        return;
       }
       
-      const result = await response.json();
+      // Add required fields
+      apiCallPayload.domain = selectedService;
+      apiCallPayload.endpoint = selectedEndpoint;
       
-      // Format the response for display
-      if (result.api_call) {
-        if (result.api_call.response) {
-          setResponse(JSON.stringify(result.api_call.response, null, 2));
-          setResponseStatus('success');
-          setSuccess(`✅ ${apiEndpoints[selectedService].name} API call executed successfully!`);
-          
-          // Notify parent component about the successful API call
-          if (onApiCall) {
-            console.log('Sending API call notification with partyId:', partyId);
-            onApiCall({
-              success: true,
-              service: selectedService,
-              endpoint: selectedEndpoint,
-              method: httpMethod,
-              response: result.api_call.response,
-              partyId: partyId
-            });
-          }
-        } else if (result.api_call.error) {
-          setError(`API Error: ${JSON.stringify(result.api_call.error, null, 2)}`);
-          setResponseStatus('error');
-          
-          // Notify parent about error
-          if (onApiCall) {
-            onApiCall({
-              success: false,
-              service: selectedService,
-              endpoint: selectedEndpoint,
-              method: httpMethod,
-              error: result.api_call.error,
-              partyId: partyId
-            });
+      let apiResponse;
+      try {
+        // Call the backend tracking endpoint which handles real API calls
+        const response = await fetch(`${apiConfig.backend}/api/headless/track`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Solution': selectedService,
+            'X-Client-Type': 'api-viewer',
+            'X-Endpoint': selectedEndpoint
+          },
+          body: JSON.stringify(apiCallPayload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        apiResponse = await response.json();
+      } catch (fetchError) {
+        console.error('API fetch error:', fetchError);
+        setError(`API call failed: ${fetchError.message}`);
+        setResponseStatus('error');
+        setLoading(false);
+        return;
+      }
+      
+      // Success path - process the response
+      try {
+        const result = apiResponse;
+        
+        // Format the response for display
+        if (result.api_call) {
+          if (result.api_call.response) {
+            setResponse(JSON.stringify(result.api_call.response, null, 2));
+            setResponseStatus('success');
+            setSuccess(`✅ ${apiEndpoints[selectedService].name} API call executed successfully!`);
+            
+            // Notify parent component about the successful API call
+            if (onApiCall) {
+              console.log('Sending API call notification with partyId:', partyId);
+              safeApiCallData.success = true;
+              safeApiCallData.response = result.api_call.response;
+              onApiCall(safeApiCallData);
+            }
+          } else if (result.api_call.error) {
+            setError(`API Error: ${JSON.stringify(result.api_call.error, null, 2)}`);
+            setResponseStatus('error');
+            
+            // Notify parent about error
+            if (onApiCall) {
+              safeApiCallData.error = result.api_call.error;
+              onApiCall(safeApiCallData);
+            }
+          } else {
+            setResponse(JSON.stringify(result, null, 2));
+            setResponseStatus('success');
+            setSuccess(`✅ ${apiEndpoints[selectedService].name} API call completed!`);
+            
+            // Notify parent about success
+            if (onApiCall) {
+              safeApiCallData.success = true;
+              safeApiCallData.response = result;
+              onApiCall(safeApiCallData);
+            }
           }
         } else {
           setResponse(JSON.stringify(result, null, 2));
@@ -646,32 +689,16 @@ const APIViewer = ({ initialService, onApiCall }) => {
           
           // Notify parent about success
           if (onApiCall) {
-            onApiCall({
-              success: true,
-              service: selectedService,
-              endpoint: selectedEndpoint,
-              method: httpMethod,
-              response: result,
-              partyId: partyId
-            });
+            safeApiCallData.success = true;
+            safeApiCallData.response = result;
+            onApiCall(safeApiCallData);
           }
         }
-      } else {
-        setResponse(JSON.stringify(result, null, 2));
-        setResponseStatus('success');
-        setSuccess(`✅ ${apiEndpoints[selectedService].name} API call completed!`);
-        
-        // Notify parent about success
-        if (onApiCall) {
-          onApiCall({
-            success: true,
-            service: selectedService,
-            endpoint: selectedEndpoint,
-            method: httpMethod,
-            response: result,
-            partyId: partyId
-          });
-        }
+      } catch (processError) {
+        console.error('Error processing API response:', processError);
+        setError(`Error processing API response: ${processError.message}`);
+        setResponseStatus('error');
+        setResponse(JSON.stringify(apiResponse, null, 2));
       }
       
       // Auto-dismiss success message after 5 seconds
@@ -686,22 +713,10 @@ const APIViewer = ({ initialService, onApiCall }) => {
         setError(`API call failed: ${err.message}`);
       }
       setResponse('');
-      
-      // Notify parent about error
-      if (onApiCall) {
-        onApiCall({
-          success: false,
-          service: selectedService,
-          endpoint: selectedEndpoint,
-          method: httpMethod,
-          error: err.message,
-          partyId: partyId
-        });
-      }
     } finally {
       setLoading(false);
     }
-  }, [selectedService, selectedEndpoint, httpMethod, uri, payload, validatePayload, onApiCall, partyId, accountReference, loanArrangementId]);
+  }, [selectedService, selectedEndpoint, httpMethod, uri, payload, validatePayload, onApiCall, partyId, accountReference, loanArrangementId, loading]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((event) => {

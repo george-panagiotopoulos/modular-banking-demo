@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from 'react';
 import {
   fetchAccounts,
   fetchLoans,
@@ -59,65 +59,105 @@ const MobileApp = forwardRef((props, ref) => {
     console.log('MobileApp: initialPartyId changed to:', initialPartyId);
     if (initialPartyId && initialPartyId !== partyId) {
       console.log(`Setting partyId to ${initialPartyId} from prop`);
-      setPartyId(initialPartyId);
-      // Store in localStorage as expected by tests
-      window.localStorage.setItem('currentPartyId', initialPartyId);
+      try {
+        setPartyId(initialPartyId);
+        // Store in localStorage as expected by tests
+        window.localStorage.setItem('currentPartyId', initialPartyId);
+      } catch (err) {
+        console.error('Error updating partyId:', err);
+      }
     }
   }, [initialPartyId, partyId]);
 
-  // Load initial data when partyId changes
+  // Debounce mechanism to prevent too many API calls
+  const debounceTimerRef = useRef(null);
+  
+  // Load initial data with debouncing
   const loadInitialData = useCallback(async () => {
-    if (!partyId) return;
-    
-    console.log(`MobileApp: Loading data for partyId: ${partyId}`);
-    setLoading(true);
-    setError('');
-    
-    try {
-      const accountsPromise = Promise.resolve(fetchAccounts(partyId))
-        .catch(err => {
-          console.error('Failed to fetch accounts:', err);
-          throw err; // Re-throw to trigger the main catch block
-        });
-
-      const loansPromise = Promise.resolve(fetchLoans(partyId))
-        .catch(err => {
-          console.error('Failed to fetch loans:', err);
-          throw err; // Re-throw to trigger the main catch block
-        });
-
-      const [accountsData, loansData] = await Promise.all([
-        accountsPromise,
-        loansPromise
-      ]);
-
-      // Handle the new API response format with success/data structure
-      const accounts = accountsData?.data || accountsData || [];
-      const loans = loansData?.data || loansData || [];
-      
-      console.log(`[MobileApp] Processing accounts data:`, accounts);
-      console.log(`[MobileApp] Processing loans data:`, loans);
-
-      setAccounts(Array.isArray(accounts) ? accounts : []);
-      setLoans(Array.isArray(loans) ? loans : []);
-    } catch (err) {
-      setError('API Error: Failed to load banking data. Please try again.');
-      console.error('Error loading initial data:', err);
-    } finally {
-      setLoading(false);
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+    
+    // Set a new debounce timer
+    debounceTimerRef.current = setTimeout(async () => {
+      if (!partyId) return;
+      
+      console.log(`MobileApp: Loading data for partyId: ${partyId}`);
+      setLoading(true);
+      setError('');
+      
+      try {
+        const accountsPromise = Promise.resolve(fetchAccounts(partyId))
+          .catch(err => {
+            console.error('Failed to fetch accounts:', err);
+            return []; // Return empty array instead of throwing
+          });
+
+        const loansPromise = Promise.resolve(fetchLoans(partyId))
+          .catch(err => {
+            console.error('Failed to fetch loans:', err);
+            return []; // Return empty array instead of throwing
+          });
+
+        let accountsData, loansData;
+        try {
+          [accountsData, loansData] = await Promise.all([
+            accountsPromise,
+            loansPromise
+          ]);
+        } catch (err) {
+          console.error('Error in Promise.all:', err);
+          accountsData = [];
+          loansData = [];
+        }
+
+        // Handle the new API response format with success/data structure
+        const accounts = accountsData?.data || accountsData || [];
+        const loans = loansData?.data || loansData || [];
+        
+        console.log(`[MobileApp] Processing accounts data:`, accounts);
+        console.log(`[MobileApp] Processing loans data:`, loans);
+
+        setAccounts(Array.isArray(accounts) ? accounts : []);
+        setLoans(Array.isArray(loans) ? loans : []);
+      } catch (err) {
+        setError('API Error: Failed to load banking data. Please try again.');
+        console.error('Error loading initial data:', err);
+        // Set empty arrays to prevent undefined errors
+        setAccounts([]);
+        setLoans([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 200); // 200ms debounce
   }, [partyId]);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Expose methods via ref for parent components to call
   useImperativeHandle(ref, () => ({
     loadInitialData,
     refreshData: loadInitialData,
     setPartyId: (newPartyId) => {
-      if (newPartyId && newPartyId !== partyId) {
-        console.log(`Setting partyId to ${newPartyId} from external component`);
-        setPartyId(newPartyId);
-        // Store in localStorage as expected by tests
-        window.localStorage.setItem('currentPartyId', newPartyId);
+      try {
+        if (newPartyId && newPartyId !== partyId) {
+          console.log(`Setting partyId to ${newPartyId} from external component`);
+          setPartyId(newPartyId);
+          // Store in localStorage as expected by tests
+          window.localStorage.setItem('currentPartyId', newPartyId);
+          return true;
+        }
+      } catch (err) {
+        console.error('Error in setPartyId:', err);
+        return false;
       }
     }
   }));
