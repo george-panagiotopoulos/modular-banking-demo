@@ -121,3 +121,6 @@ modular-banking-frontend/build/
 *.generated.* *.log
 *.pid
 node_modules/
+
+# Azure configuration with credentials
+infrastructure/azure-visualization-config.json
