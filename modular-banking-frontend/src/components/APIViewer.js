@@ -2,9 +2,9 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import './APIViewer.css';
 import apiConfig from '../config/apiConfig';
 
-const APIViewer = () => {
+const APIViewer = ({ initialService, onApiCall }) => {
   // State management
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState(initialService || '');
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [httpMethod, setHttpMethod] = useState('GET');
   const [uri, setUri] = useState('');
@@ -311,6 +311,13 @@ const APIViewer = () => {
     }
   };
 
+  // Apply initial service if provided
+  useEffect(() => {
+    if (initialService && apiEndpoints[initialService]) {
+      setSelectedService(initialService);
+    }
+  }, [initialService]);
+
   // Handle service selection change
   const handleServiceChange = useCallback((event) => {
     const value = event.target.value;
@@ -538,6 +545,9 @@ const APIViewer = () => {
     setError(null);
     setSuccess(null);
     
+    // Debug log the current partyId
+    console.log('Current partyId in APIViewer before API call:', partyId);
+    
     // Validate inputs
     if (!selectedService) {
       setError('Please select a service');
@@ -601,18 +611,67 @@ const APIViewer = () => {
           setResponse(JSON.stringify(result.api_call.response, null, 2));
           setResponseStatus('success');
           setSuccess(`✅ ${apiEndpoints[selectedService].name} API call executed successfully!`);
+          
+          // Notify parent component about the successful API call
+          if (onApiCall) {
+            console.log('Sending API call notification with partyId:', partyId);
+            onApiCall({
+              success: true,
+              service: selectedService,
+              endpoint: selectedEndpoint,
+              method: httpMethod,
+              response: result.api_call.response,
+              partyId: partyId
+            });
+          }
         } else if (result.api_call.error) {
           setError(`API Error: ${JSON.stringify(result.api_call.error, null, 2)}`);
           setResponseStatus('error');
+          
+          // Notify parent about error
+          if (onApiCall) {
+            onApiCall({
+              success: false,
+              service: selectedService,
+              endpoint: selectedEndpoint,
+              method: httpMethod,
+              error: result.api_call.error,
+              partyId: partyId
+            });
+          }
         } else {
           setResponse(JSON.stringify(result, null, 2));
           setResponseStatus('success');
           setSuccess(`✅ ${apiEndpoints[selectedService].name} API call completed!`);
+          
+          // Notify parent about success
+          if (onApiCall) {
+            onApiCall({
+              success: true,
+              service: selectedService,
+              endpoint: selectedEndpoint,
+              method: httpMethod,
+              response: result,
+              partyId: partyId
+            });
+          }
         }
       } else {
         setResponse(JSON.stringify(result, null, 2));
         setResponseStatus('success');
         setSuccess(`✅ ${apiEndpoints[selectedService].name} API call completed!`);
+        
+        // Notify parent about success
+        if (onApiCall) {
+          onApiCall({
+            success: true,
+            service: selectedService,
+            endpoint: selectedEndpoint,
+            method: httpMethod,
+            response: result,
+            partyId: partyId
+          });
+        }
       }
       
       // Auto-dismiss success message after 5 seconds
@@ -627,10 +686,22 @@ const APIViewer = () => {
         setError(`API call failed: ${err.message}`);
       }
       setResponse('');
+      
+      // Notify parent about error
+      if (onApiCall) {
+        onApiCall({
+          success: false,
+          service: selectedService,
+          endpoint: selectedEndpoint,
+          method: httpMethod,
+          error: err.message,
+          partyId: partyId
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [selectedService, selectedEndpoint, httpMethod, uri, payload, validatePayload]);
+  }, [selectedService, selectedEndpoint, httpMethod, uri, payload, validatePayload, onApiCall, partyId, accountReference, loanArrangementId]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((event) => {

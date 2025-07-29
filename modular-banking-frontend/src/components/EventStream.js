@@ -137,7 +137,7 @@ const EventDetails = ({ event }) => (
 );
 
 // Main Event Stream Component
-const EventStream = () => {
+const EventStream = ({ initialComponent }) => {
   const [components, setComponents] = useState([]);
   const [componentOrder, setComponentOrder] = useState([]);
   const [events, setEvents] = useState({});
@@ -174,12 +174,16 @@ const EventStream = () => {
         setComponentOrder(prevOrder => 
           prevOrder.length === 0 ? data.data.map(comp => comp.key) : prevOrder
         );
+
+        // Store components data for later use with initialComponent
+        return data.data;
       } else {
         throw new Error(data.message || 'Failed to fetch components');
       }
     } catch (err) {
       console.error('Error fetching components:', err);
       setError(`Failed to load components: ${err.message}`);
+      return [];
     }
   }, []);
 
@@ -441,8 +445,19 @@ const EventStream = () => {
 
   // Initialize component on mount
   useEffect(() => {
-    fetchComponents();
-    fetchStats();
+    const initializeApp = async () => {
+      const componentsData = await fetchComponents();
+      fetchStats();
+      
+      // If initialComponent is provided, connect to it after components are fetched
+      if (initialComponent && componentsData.some(comp => comp.key === initialComponent)) {
+        setTimeout(() => {
+          connectToComponent(initialComponent);
+        }, 500);
+      }
+    };
+
+    initializeApp();
     
     // Set up periodic stats refresh
     const statsInterval = setInterval(fetchStats, 5000);
@@ -458,7 +473,7 @@ const EventStream = () => {
       });
       eventSourcesRef.current = {};
     };
-  }, [fetchComponents, fetchStats]);
+  }, [fetchComponents, fetchStats, initialComponent, connectToComponent]);
 
   // Get ordered components for rendering
   const orderedComponents = componentOrder

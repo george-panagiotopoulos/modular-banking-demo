@@ -100,6 +100,17 @@ const DemoFlow = () => {
                 This comprehensive demo showcases how our modular architecture delivers seamless customer experiences 
                 while maintaining the flexibility and scalability that modern banks require.
               </p>
+              
+              {/* 360 Demo Button */}
+              <div className="threesixty-demo-button-container">
+                <button 
+                  className="threesixty-demo-button"
+                  onClick={() => navigate('/demo-flow/360-demo')}
+                >
+                  <span className="threesixty-demo-icon">🔄</span>
+                  360° Technical/Functional Demo View
+                </button>
+              </div>
             </div>
 
             <div className="demo-features">

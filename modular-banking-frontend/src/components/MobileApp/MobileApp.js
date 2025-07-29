@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import {
   fetchAccounts,
   fetchLoans,
@@ -23,9 +23,12 @@ const getProductDisplayName = (productName) => {
   return productMappings[productName] || productName;
 };
 
-const MobileApp = () => {
+const MobileApp = forwardRef((props, ref) => {
+  // Get initialPartyId from props or use default
+  const { initialPartyId } = props;
+  
   // State management
-  const [partyId, setPartyId] = useState('2517636814');
+  const [partyId, setPartyId] = useState(initialPartyId || '2517636814');
   const [accounts, setAccounts] = useState([]);
   const [loans, setLoans] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -51,10 +54,22 @@ const MobileApp = () => {
     description: ''
   });
 
+  // Effect to handle initialPartyId changes
+  useEffect(() => {
+    console.log('MobileApp: initialPartyId changed to:', initialPartyId);
+    if (initialPartyId && initialPartyId !== partyId) {
+      console.log(`Setting partyId to ${initialPartyId} from prop`);
+      setPartyId(initialPartyId);
+      // Store in localStorage as expected by tests
+      window.localStorage.setItem('currentPartyId', initialPartyId);
+    }
+  }, [initialPartyId, partyId]);
+
   // Load initial data when partyId changes
   const loadInitialData = useCallback(async () => {
     if (!partyId) return;
     
+    console.log(`MobileApp: Loading data for partyId: ${partyId}`);
     setLoading(true);
     setError('');
     
@@ -92,6 +107,20 @@ const MobileApp = () => {
       setLoading(false);
     }
   }, [partyId]);
+
+  // Expose methods via ref for parent components to call
+  useImperativeHandle(ref, () => ({
+    loadInitialData,
+    refreshData: loadInitialData,
+    setPartyId: (newPartyId) => {
+      if (newPartyId && newPartyId !== partyId) {
+        console.log(`Setting partyId to ${newPartyId} from external component`);
+        setPartyId(newPartyId);
+        // Store in localStorage as expected by tests
+        window.localStorage.setItem('currentPartyId', newPartyId);
+      }
+    }
+  }));
 
   useEffect(() => {
     loadInitialData();
@@ -759,6 +788,6 @@ const MobileApp = () => {
       </div>
     </div>
   );
-};
+});
 
 export default MobileApp;

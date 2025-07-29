@@ -8,6 +8,7 @@ import DemoFlow from './DemoFlow';
 import EventStream from './components/EventStream';
 import APIViewer from './components/APIViewer';
 import AdditionalDemos from './components/AdditionalDemos';
+import ThreeSixtyDemo from './components/ThreeSixtyDemo';
 
 function AppContent() {
   const location = useLocation();
@@ -39,6 +40,7 @@ function AppContent() {
           <Route path="/supporting-services" element={<SupportingServices />} />
           <Route path="/modular-architecture" element={<ModularArchitecture />} />
           <Route path="/demo-flow" element={<DemoFlow />} />
+          <Route path="/demo-flow/360-demo" element={<ThreeSixtyDemo />} />
           <Route path="/event-stream" element={<EventStream />} />
           <Route path="/api-viewer" element={<APIViewer />} />
           <Route path="/additional-demos" element={<AdditionalDemos />} />
